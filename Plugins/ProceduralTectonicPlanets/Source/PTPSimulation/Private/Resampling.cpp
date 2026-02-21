@@ -22,8 +22,9 @@ constexpr int32 TargetNearestCandidates = 32;
 constexpr int32 MaxSearchRing = GridResolution;
 constexpr int32 FallbackNearestSampleCount = 6;
 constexpr int32 FallbackCandidateCount = 128;
-constexpr float GapThresholdSpacingFactor = 6.0f;
+constexpr float GapThresholdSpacingFactor = 3.0f;
 constexpr float GapThresholdMinKm = 220.0f;
+constexpr float GapSecondaryPlateFactor = 2.0f;
 
 enum class EPointClassification : uint8
 {
@@ -706,7 +707,29 @@ bool BuildFallbackSampleFromNearest(
     const float NearestDistanceKm = ResampleGreatCircleDistanceKm(Position, NearestSample.Position);
     if (NearestDistanceKm > GapDistanceThresholdKm)
     {
-        return false;
+        float OtherPlateDistanceKm = FLT_MAX;
+        for (const int32 CandidateIndex : Nearest)
+        {
+            if (!OldState.Samples.IsValidIndex(CandidateIndex))
+            {
+                continue;
+            }
+
+            const FCrustSample& Candidate = OldState.Samples[CandidateIndex];
+            if (Candidate.PlateIndex == NearestSample.PlateIndex)
+            {
+                continue;
+            }
+
+            OtherPlateDistanceKm = ResampleGreatCircleDistanceKm(Position, Candidate.Position);
+            break;
+        }
+
+        // Only mark as true divergence gap when two different plates are both nearby.
+        if (OtherPlateDistanceKm <= GapDistanceThresholdKm * GapSecondaryPlateFactor)
+        {
+            return false;
+        }
     }
 
     TArray<int32, TInlineAllocator<FallbackNearestSampleCount>> SamePlate;
@@ -906,6 +929,7 @@ bool GlobalResample(FPlanetState& State, FGlobalResampleStats* OutStats)
     const float GapDistanceThresholdKm = FMath::Max(
         GapThresholdMinKm,
         GapThresholdSpacingFactor * ComputeAverageSampleSpacingKm(OldState.SampleCount));
+    UE_LOG(LogTemp, Log, TEXT("[PTP] Resample gap threshold: %.1f km (spacing factor %.2f)"), GapDistanceThresholdKm, GapThresholdSpacingFactor);
 
     const double TransferStart = FPlatformTime::Seconds();
     ParallelFor(OldState.SampleCount, [&OldState, &PlateBVHs, &SpatialGrid, &QueryResults, &NewSamples, &GapCount, &OverlapCount, &NormalCount, &FallbackCount, GapDistanceThresholdKm](const int32 SampleIndex)
