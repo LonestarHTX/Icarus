@@ -52,6 +52,11 @@ void APlanetActor::Tick(const float DeltaSeconds)
     SimulateSteps(PlaybackStepsPerTick);
 }
 
+bool APlanetActor::ShouldTickIfViewportsOnly() const
+{
+    return true;
+}
+
 void APlanetActor::GeneratePlanet()
 {
     bSimulationPlaybackActive = false;

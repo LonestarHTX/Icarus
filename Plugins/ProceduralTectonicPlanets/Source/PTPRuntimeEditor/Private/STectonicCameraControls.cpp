@@ -133,6 +133,8 @@ void STectonicCameraControls::Construct(const FArguments& InArgs)
             ]
         ]
     ];
+
+    RefreshFromPlanetActor();
 }
 
 TSharedRef<SWidget> STectonicCameraControls::BuildCameraSection()
@@ -375,6 +377,85 @@ TSharedRef<SWidget> STectonicCameraControls::BuildPlanetSection()
                 .ColorAndOpacity(TectonicUI::Separator)
             ]
 
+            // Simulation controls
+            + SVerticalBox::Slot()
+            .AutoHeight()
+            .Padding(0.0f, 6.0f, 0.0f, 4.0f)
+            [
+                MakeSubsectionLabel(TEXT("SIMULATION"))
+            ]
+
+            + SVerticalBox::Slot()
+            .AutoHeight()
+            .Padding(0.0f, 4.0f, 0.0f, 4.0f)
+            [
+                MakeParameterRow(TEXT("Step Count"),
+                    SAssignNew(StepCountSpinBox, SSpinBox<int32>)
+                    .MinValue(1)
+                    .MaxValue(1000)
+                    .Value(1)
+                    .Delta(1)
+                    .OnValueChanged(this, &STectonicCameraControls::OnStepCountChanged)
+                    .OnValueCommitted(this, &STectonicCameraControls::OnStepCountCommitted)
+                )
+            ]
+
+            + SVerticalBox::Slot()
+            .AutoHeight()
+            .Padding(0.0f, 2.0f, 0.0f, 4.0f)
+            [
+                SNew(SHorizontalBox)
+                + SHorizontalBox::Slot()
+                .FillWidth(1.0f)
+                .Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                [
+                    SNew(SButton)
+                    .OnClicked(this, &STectonicCameraControls::OnStepClicked)
+                    .ButtonColorAndOpacity(TectonicUI::AccentBlue)
+                    .ToolTipText(FText::FromString(TEXT("Advance simulation by Step Count timesteps")))
+                    [
+                        SNew(STextBlock)
+                        .Text(FText::FromString(TEXT("Step")))
+                        .Font(FAppStyle::Get().GetFontStyle("SmallFont"))
+                        .ColorAndOpacity(FLinearColor::White)
+                        .Justification(ETextJustify::Center)
+                    ]
+                ]
+
+                + SHorizontalBox::Slot()
+                .FillWidth(1.0f)
+                .Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                [
+                    SNew(SButton)
+                    .OnClicked(this, &STectonicCameraControls::OnPlayClicked)
+                    .ButtonColorAndOpacity(TectonicUI::AccentGreen)
+                    .ToolTipText(FText::FromString(TEXT("Start continuous simulation playback")))
+                    [
+                        SNew(STextBlock)
+                        .Text(FText::FromString(TEXT("Play")))
+                        .Font(FAppStyle::Get().GetFontStyle("SmallFont"))
+                        .ColorAndOpacity(FLinearColor::White)
+                        .Justification(ETextJustify::Center)
+                    ]
+                ]
+
+                + SHorizontalBox::Slot()
+                .FillWidth(1.0f)
+                [
+                    SNew(SButton)
+                    .OnClicked(this, &STectonicCameraControls::OnStopClicked)
+                    .ButtonColorAndOpacity(TectonicUI::ButtonNormal)
+                    .ToolTipText(FText::FromString(TEXT("Stop continuous simulation playback")))
+                    [
+                        SNew(STextBlock)
+                        .Text(FText::FromString(TEXT("Stop")))
+                        .Font(FAppStyle::Get().GetFontStyle("SmallFont"))
+                        .ColorAndOpacity(FLinearColor::White)
+                        .Justification(ETextJustify::Center)
+                    ]
+                ]
+            ]
+
             // Generate Button
             + SVerticalBox::Slot()
             .AutoHeight()
@@ -402,6 +483,30 @@ TSharedRef<SWidget> STectonicCameraControls::BuildPlanetSection()
             + SVerticalBox::Slot()
             .AutoHeight()
             .Padding(0.0f, 4.0f, 0.0f, 4.0f)
+            .HAlign(HAlign_Fill)
+            [
+                SNew(SButton)
+                .HAlign(HAlign_Center)
+                .OnClicked(this, &STectonicCameraControls::OnResetSimulationClicked)
+                .ButtonColorAndOpacity(TectonicUI::ButtonNormal)
+                .ToolTipText(FText::FromString(TEXT("Regenerate planet with current settings")))
+                [
+                    SNew(SBox)
+                    .Padding(FMargin(24.0f, 4.0f))
+                    [
+                        SNew(STextBlock)
+                        .Text(FText::FromString(TEXT("Reset Simulation")))
+                        .Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
+                        .ColorAndOpacity(FLinearColor::White)
+                        .Justification(ETextJustify::Center)
+                    ]
+                ]
+            ]
+
+            // Export Map Button
+            + SVerticalBox::Slot()
+            .AutoHeight()
+            .Padding(0.0f, 2.0f, 0.0f, 4.0f)
             .HAlign(HAlign_Fill)
             [
                 SNew(SButton)
@@ -658,6 +763,11 @@ void STectonicCameraControls::RefreshFromPlanetActor()
     {
         RenderScaleSpinBox->SetValue(Planet->RenderScale);
     }
+    StepCount = FMath::Max(1, Planet->PlaybackStepsPerTick);
+    if (StepCountSpinBox.IsValid())
+    {
+        StepCountSpinBox->SetValue(StepCount);
+    }
 }
 
 // View Mode
@@ -838,6 +948,66 @@ FReply STectonicCameraControls::OnExportMapClicked()
     UE_LOG(LogTemp, Log, TEXT("[PTP] Exported all map layers to: %s"), *OutputDirectory);
 
     return FReply::Handled();
+}
+
+FReply STectonicCameraControls::OnStepClicked()
+{
+    if (APlanetActor* Planet = FindPlanetActor())
+    {
+        Planet->SimulateSteps(StepCount);
+    }
+
+    return FReply::Handled();
+}
+
+FReply STectonicCameraControls::OnPlayClicked()
+{
+    if (APlanetActor* Planet = FindPlanetActor())
+    {
+        Planet->PlaybackStepsPerTick = FMath::Max(1, StepCount);
+        Planet->StartSimulationPlayback();
+    }
+
+    return FReply::Handled();
+}
+
+FReply STectonicCameraControls::OnStopClicked()
+{
+    if (APlanetActor* Planet = FindPlanetActor())
+    {
+        Planet->StopSimulationPlayback();
+    }
+
+    return FReply::Handled();
+}
+
+FReply STectonicCameraControls::OnResetSimulationClicked()
+{
+    if (APlanetActor* Planet = FindPlanetActor())
+    {
+        Planet->ResetSimulation();
+    }
+
+    if (const TSharedPtr<FTectonicViewportClient> Pinned = ViewportClient.Pin())
+    {
+        Pinned->ResetCamera();
+    }
+
+    return FReply::Handled();
+}
+
+void STectonicCameraControls::OnStepCountChanged(const int32 NewValue)
+{
+    StepCount = FMath::Max(1, NewValue);
+    if (APlanetActor* Planet = FindPlanetActor())
+    {
+        Planet->PlaybackStepsPerTick = StepCount;
+    }
+}
+
+void STectonicCameraControls::OnStepCountCommitted(const int32 NewValue, ETextCommit::Type CommitType)
+{
+    OnStepCountChanged(NewValue);
 }
 
 // Camera Controls

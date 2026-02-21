@@ -53,6 +53,8 @@ private:
     TSharedPtr<SSpinBox<float>> ContinentalRatioSpinBox;
     TSharedPtr<SSpinBox<int32>> RandomSeedSpinBox;
     TSharedPtr<SSpinBox<float>> RenderScaleSpinBox;
+    TSharedPtr<SSpinBox<int32>> StepCountSpinBox;
+    int32 StepCount = 1;
 
     // UI Builder helpers
     TSharedRef<SWidget> BuildCameraSection();
@@ -118,4 +120,10 @@ private:
     FReply OnGeneratePlanetClicked();
     FReply OnRandomizeSeedClicked();
     FReply OnExportMapClicked();
+    FReply OnStepClicked();
+    FReply OnPlayClicked();
+    FReply OnStopClicked();
+    FReply OnResetSimulationClicked();
+    void OnStepCountChanged(int32 NewValue);
+    void OnStepCountCommitted(int32 NewValue, ETextCommit::Type CommitType);
 };

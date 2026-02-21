@@ -29,6 +29,7 @@ class PTPRUNTIME_API APlanetActor : public AActor
 public:
     APlanetActor();
     virtual void Tick(float DeltaSeconds) override;
+    virtual bool ShouldTickIfViewportsOnly() const override;
 
     UFUNCTION(BlueprintCallable, CallInEditor, Category = "Planet")
     void GeneratePlanet();
