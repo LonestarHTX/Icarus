@@ -28,12 +28,28 @@ class PTPRUNTIME_API APlanetActor : public AActor
 
 public:
     APlanetActor();
+    virtual void Tick(float DeltaSeconds) override;
 
     UFUNCTION(BlueprintCallable, CallInEditor, Category = "Planet")
     void GeneratePlanet();
 
     UFUNCTION(BlueprintCallable, Category = "Planet")
     void UpdateMesh();
+
+    UFUNCTION(BlueprintCallable, Category = "Planet|Simulation")
+    void SimulateSteps(int32 StepCount = 1);
+
+    UFUNCTION(BlueprintCallable, Category = "Planet|Simulation")
+    void StartSimulationPlayback();
+
+    UFUNCTION(BlueprintCallable, Category = "Planet|Simulation")
+    void StopSimulationPlayback();
+
+    UFUNCTION(BlueprintCallable, Category = "Planet|Simulation")
+    void ResetSimulation();
+
+    UFUNCTION(BlueprintCallable, Category = "Planet|Simulation")
+    bool ExportCurrentMaps(int32 Width = 2048, int32 Height = 1024) const;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet")
     EPlanetVisualizationMode VisualizationMode = EPlanetVisualizationMode::Elevation;
@@ -46,6 +62,12 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet")
     FPlanetGenerationParams GenerationParams;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Simulation", meta = (ClampMin = "1"))
+    int32 PlaybackStepsPerTick = 1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Simulation")
+    bool bExportMapsAfterStepping = true;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Rendering")
     TObjectPtr<UMaterialInterface> VertexColorMaterial = nullptr;
@@ -64,6 +86,7 @@ protected:
 
 private:
     bool bMeshInitialized = false;
+    bool bSimulationPlaybackActive = false;
 
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInterface> DefaultVertexColorMaterial = nullptr;

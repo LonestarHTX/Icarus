@@ -28,6 +28,7 @@ powershell.exe -NoProfile -Command "& 'C:\Program Files\Epic Games\UE_5.7\Engine
 
 Use Unreal Editor for runtime verification and log inspection (`Saved/Logs/Icarus.log`).
 Map exports are written to `Saved/TectonicMaps/` via `TectonicExport.All` and `TectonicExport.Layer`.
+Simulation can be advanced via `Tectonic.Step [N]`, with playback controls `Tectonic.Play`, `Tectonic.Stop`, and `Tectonic.Reset`.
 
 ## Coding Style & Naming Conventions
 - Use Unreal C++ style: tabs/spaces as in surrounding files, include order stable, minimal comments.
@@ -40,6 +41,7 @@ No dedicated test module is currently checked in. Validate changes by:
 - Building `IcarusEditor` without warnings/errors.
 - Running geometry validation paths in `PTPCore` and checking `UE_LOG` output.
 - For export changes, run at least one `TectonicExport.Layer` command and verify no banding/artifacts.
+- For movement changes, run `Tectonic.Step 10` and verify plate drift is coherent (no fragmented plate IDs).
 - Adding focused tests later via Unreal Automation Framework when simulation behavior is introduced.
 
 ## Commit & Pull Request Guidelines

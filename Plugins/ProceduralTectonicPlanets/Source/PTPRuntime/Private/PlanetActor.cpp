@@ -8,11 +8,16 @@
 #include "Materials/MaterialExpressionVertexColor.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "PlanetColorRamp.h"
+#include "PlanetConstants.h"
+#include "PlanetMapExporter.h"
 #include "PlateInitializer.h"
+#include "PlateMotion.h"
 #include "RealtimeMeshComponent.h"
 #include "RealtimeMeshSimple.h"
 #include "SphericalTriangulation.h"
+#include "TectonicData.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Misc/Paths.h"
 
 using namespace RealtimeMesh;
 
@@ -24,7 +29,8 @@ const FRealtimeMeshSectionKey PlanetSectionKey = FRealtimeMeshSectionKey::Create
 
 APlanetActor::APlanetActor()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     MeshComponent = CreateDefaultSubobject<URealtimeMeshComponent>(TEXT("RealtimeMeshComponent"));
     MeshComponent->SetMobility(EComponentMobility::Movable);
@@ -34,8 +40,23 @@ APlanetActor::APlanetActor()
     SetRootComponent(MeshComponent);
 }
 
+void APlanetActor::Tick(const float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+
+    if (!bSimulationPlaybackActive)
+    {
+        return;
+    }
+
+    SimulateSteps(PlaybackStepsPerTick);
+}
+
 void APlanetActor::GeneratePlanet()
 {
+    bSimulationPlaybackActive = false;
+    SetActorTickEnabled(false);
+
     const int32 ClampedSampleCount = FMath::Max(SampleCount, 4);
     if (SampleCount != ClampedSampleCount)
     {
@@ -98,6 +119,66 @@ void APlanetActor::GeneratePlanet()
     UE_LOG(LogTemp, Log, TEXT("[PTP] Plate validation: %s"), bPlatesValid ? TEXT("PASSED") : TEXT("FAILED"));
 
     UpdateMesh();
+}
+
+void APlanetActor::SimulateSteps(int32 StepCount)
+{
+    if (PlanetState.Samples.IsEmpty() || PlanetState.Plates.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[PTP] SimulateSteps skipped: planet has not been generated."));
+        return;
+    }
+
+    const int32 ClampedStepCount = FMath::Max(StepCount, 1);
+    for (int32 StepIndex = 0; StepIndex < ClampedStepCount; ++StepIndex)
+    {
+        MovePlates(PlanetState, PTP::DeltaT);
+    }
+
+    UpdateMesh();
+
+    UE_LOG(LogTemp, Log, TEXT("[PTP] Simulated %d step(s). Planet time: %.2f My"), ClampedStepCount, PlanetState.Time);
+
+    if (bExportMapsAfterStepping)
+    {
+        ExportCurrentMaps();
+    }
+}
+
+void APlanetActor::StartSimulationPlayback()
+{
+    if (PlanetState.Samples.IsEmpty() || PlanetState.Plates.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[PTP] StartSimulationPlayback skipped: planet has not been generated."));
+        return;
+    }
+
+    bSimulationPlaybackActive = true;
+    SetActorTickEnabled(true);
+}
+
+void APlanetActor::StopSimulationPlayback()
+{
+    bSimulationPlaybackActive = false;
+    SetActorTickEnabled(false);
+}
+
+void APlanetActor::ResetSimulation()
+{
+    GeneratePlanet();
+}
+
+bool APlanetActor::ExportCurrentMaps(const int32 Width, const int32 Height) const
+{
+    if (PlanetState.Samples.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[PTP] ExportCurrentMaps skipped: planet state is empty."));
+        return false;
+    }
+
+    const FString OutputDirectory = FPaths::ProjectSavedDir() / TEXT("TectonicMaps");
+    UPlanetMapExporter::ExportAllLayers(FTectonicData::FromPlanetState(PlanetState), OutputDirectory, Width, Height);
+    return true;
 }
 
 void APlanetActor::UpdateMesh()

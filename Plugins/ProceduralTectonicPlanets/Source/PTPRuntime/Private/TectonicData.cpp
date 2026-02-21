@@ -66,7 +66,16 @@ FTectonicData FTectonicData::FromPlanetState(const FPlanetState& State)
         Out.ContinentalMask[Index] = Sample.CrustType == ECrustType::Continental;
         Out.BoundaryTypes[Index] = EBoundaryType::None;
         Out.BoundaryStress[Index] = 0.0;
-        Out.Velocities[Index] = FVector::ZeroVector;
+
+        FVector3d Velocity = FVector3d::ZeroVector;
+        if (State.Plates.IsValidIndex(Sample.PlateIndex))
+        {
+            const FPlate& Plate = State.Plates[Sample.PlateIndex];
+            const FVector3d AngularVector = FVector3d(Plate.RotationAxis) * Plate.AngularVelocity;
+            Velocity = FVector3d::CrossProduct(AngularVector, FVector3d(Sample.Position));
+        }
+
+        Out.Velocities[Index] = FVector(Velocity);
     }
 
     return Out;

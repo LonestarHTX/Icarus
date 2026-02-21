@@ -1,6 +1,7 @@
 #include "PlateInitializer.h"
 
 #include "PlanetConstants.h"
+#include "PlateMotion.h"
 
 namespace
 {
@@ -225,23 +226,7 @@ void InitializePlates(FPlanetState& State, const FPlanetGenerationParams& Params
         }
     }
 
-    const float MinAngularVelocity = FMath::Min(Params.MinAngularVelocity, Params.MaxAngularVelocity);
-    const float MaxAngularVelocity = FMath::Max(Params.MinAngularVelocity, Params.MaxAngularVelocity);
-    for (FPlate& Plate : State.Plates)
-    {
-        FVector Axis = RandomStream.VRand();
-        Axis.Normalize();
-        Plate.RotationAxis = Axis;
-
-        Plate.AngularVelocity = FMath::Lerp(MinAngularVelocity, MaxAngularVelocity, RandomStream.FRand());
-        if (RandomStream.FRand() < 0.5f)
-        {
-            Plate.AngularVelocity *= -1.0f;
-        }
-
-        const float AnglePerStep = Plate.AngularVelocity * PTP::DeltaT;
-        Plate.StepRotation = FQuat(Plate.RotationAxis, AnglePerStep);
-    }
+    InitializePlateMotions(State.Plates, RandomStream);
 }
 
 bool ValidatePlateInitialization(const FPlanetState& State)

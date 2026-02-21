@@ -6,6 +6,7 @@ Procedural tectonic planet generation in Unreal Engine 5.7, based on the 2019 pa
 - Step 1: Fibonacci sphere sampling, spherical Delaunay triangulation, CSR adjacency, geometry validation.
 - Step 2: Runtime rendering actor (`APlanetActor`) with RealtimeMesh Pro, visualization modes, and editor-time generation.
 - Step 3: Plate initialization (`~40` plates), seeded Voronoi-style flood fill, crust/elevation initialization, and per-plate angular motion metadata.
+- Step 4: Geodetic plate drift (`DeltaT = 2 My`) with per-plate rigid rotation, parallel sample updates, simulation stepping, and playback controls.
 - Map Export: Equirectangular PNG export layers (`PlateID`, `Elevation`, `ContinentalMask`, `BoundaryType`, `Velocity`, `Composite`) with console commands.
 
 ## Repository Layout
@@ -38,6 +39,19 @@ TectonicExport.Layer Composite 4096 2048
 ```
 
 Outputs are written to `Saved/TectonicMaps/`.
+
+## Simulation Controls
+Use editor console commands:
+
+```text
+Tectonic.Step
+Tectonic.Step 10
+Tectonic.Play
+Tectonic.Stop
+Tectonic.Reset
+```
+
+`Tectonic.Step N` advances by `N * 2 My`, updates the mesh, and exports map layers to `Saved/TectonicMaps/` when enabled on `APlanetActor`.
 
 ## Branching
 - `main` stays buildable.
