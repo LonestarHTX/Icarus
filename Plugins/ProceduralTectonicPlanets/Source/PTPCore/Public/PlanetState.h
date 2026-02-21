@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 
+#include "BoundaryTypes.h"
 #include "CrustSample.h"
 #include "Plate.h"
 
@@ -18,6 +19,8 @@ struct FPlanetState
 
     int32 NumPlates = 0;
     TArray<FPlate> Plates;
+    TArray<FSampleBoundaryInfo> SampleBoundaryInfo;
+    FBoundaryRegistry BoundaryRegistry;
 
     friend PTPCORE_API FArchive& operator<<(FArchive& Ar, FPlanetState& State);
 };

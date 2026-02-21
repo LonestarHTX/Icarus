@@ -1,5 +1,6 @@
 #include "TectonicData.h"
 
+#include "BoundaryTypes.h"
 #include "FibonacciSphere.h"
 #include "PlateInitializer.h"
 #include "PlanetConstants.h"
@@ -35,6 +36,11 @@ EBoundaryType FTectonicData::GetBoundaryType(const int32 Index) const
     return BoundaryTypes.IsValidIndex(Index) ? BoundaryTypes[Index] : EBoundaryType::None;
 }
 
+EBoundaryConvergenceType FTectonicData::GetBoundaryConvergenceType(const int32 Index) const
+{
+    return BoundaryConvergenceTypes.IsValidIndex(Index) ? BoundaryConvergenceTypes[Index] : EBoundaryConvergenceType::None;
+}
+
 double FTectonicData::GetBoundaryStress(const int32 Index) const
 {
     return BoundaryStress.IsValidIndex(Index) ? BoundaryStress[Index] : 0.0;
@@ -47,6 +53,38 @@ FVector3d FTectonicData::GetVelocity(const int32 Index) const
 
 FTectonicData FTectonicData::FromPlanetState(const FPlanetState& State)
 {
+    const auto ConvertBoundaryType = [](const EPTPBoundaryType InType)
+    {
+        switch (InType)
+        {
+        case EPTPBoundaryType::Convergent:
+            return EBoundaryType::Convergent;
+        case EPTPBoundaryType::Divergent:
+            return EBoundaryType::Divergent;
+        case EPTPBoundaryType::Transform:
+            return EBoundaryType::Transform;
+        case EPTPBoundaryType::None:
+        default:
+            return EBoundaryType::None;
+        }
+    };
+
+    const auto ConvertConvergenceType = [](const EPTPConvergenceType InType)
+    {
+        switch (InType)
+        {
+        case EPTPConvergenceType::OceanicSubduction:
+            return EBoundaryConvergenceType::OceanicSubduction;
+        case EPTPConvergenceType::OceanOceanSubduction:
+            return EBoundaryConvergenceType::OceanOceanSubduction;
+        case EPTPConvergenceType::ContinentalCollision:
+            return EBoundaryConvergenceType::ContinentalCollision;
+        case EPTPConvergenceType::None:
+        default:
+            return EBoundaryConvergenceType::None;
+        }
+    };
+
     FTectonicData Out;
     const int32 NumPoints = State.Samples.Num();
     Out.PointPositions.SetNum(NumPoints);
@@ -54,6 +92,7 @@ FTectonicData FTectonicData::FromPlanetState(const FPlanetState& State)
     Out.Elevations.SetNum(NumPoints);
     Out.ContinentalMask.SetNum(NumPoints);
     Out.BoundaryTypes.SetNum(NumPoints);
+    Out.BoundaryConvergenceTypes.SetNum(NumPoints);
     Out.BoundaryStress.SetNum(NumPoints);
     Out.Velocities.SetNum(NumPoints);
 
@@ -64,8 +103,19 @@ FTectonicData FTectonicData::FromPlanetState(const FPlanetState& State)
         Out.PlateIDs[Index] = Sample.PlateIndex;
         Out.Elevations[Index] = Sample.Elevation / 10.0;
         Out.ContinentalMask[Index] = Sample.CrustType == ECrustType::Continental;
-        Out.BoundaryTypes[Index] = EBoundaryType::None;
-        Out.BoundaryStress[Index] = 0.0;
+        EBoundaryType BoundaryType = EBoundaryType::None;
+        EBoundaryConvergenceType ConvergenceType = EBoundaryConvergenceType::None;
+        float BoundaryStress = 0.0f;
+        if (State.SampleBoundaryInfo.IsValidIndex(Index))
+        {
+            const FSampleBoundaryInfo& BoundaryInfo = State.SampleBoundaryInfo[Index];
+            BoundaryType = ConvertBoundaryType(BoundaryInfo.BoundaryType);
+            ConvergenceType = ConvertConvergenceType(BoundaryInfo.ConvergenceType);
+            BoundaryStress = BoundaryInfo.BoundaryStress;
+        }
+        Out.BoundaryTypes[Index] = BoundaryType;
+        Out.BoundaryConvergenceTypes[Index] = ConvergenceType;
+        Out.BoundaryStress[Index] = BoundaryStress;
 
         FVector3d Velocity = FVector3d::ZeroVector;
         if (State.Plates.IsValidIndex(Sample.PlateIndex))
@@ -109,6 +159,7 @@ FTectonicData FTectonicData::CreateMockData(int32 NumPoints, int32 NumPlates, co
 
     FTectonicData Out = FromPlanetState(State);
     Out.BoundaryTypes.Init(EBoundaryType::None, NumPoints);
+    Out.BoundaryConvergenceTypes.Init(EBoundaryConvergenceType::None, NumPoints);
     Out.BoundaryStress.Init(0.0, NumPoints);
 
     for (int32 Index = 0; Index < NumPoints; ++Index)

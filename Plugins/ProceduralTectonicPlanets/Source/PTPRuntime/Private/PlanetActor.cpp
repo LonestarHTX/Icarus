@@ -10,6 +10,7 @@
 #include "PlanetColorRamp.h"
 #include "PlanetConstants.h"
 #include "PlanetMapExporter.h"
+#include "BoundaryDetection.h"
 #include "PlateInitializer.h"
 #include "PlateMotion.h"
 #include "RealtimeMeshComponent.h"
@@ -123,6 +124,8 @@ void APlanetActor::GeneratePlanet()
     const bool bPlatesValid = ValidatePlateInitialization(PlanetState);
     UE_LOG(LogTemp, Log, TEXT("[PTP] Plate validation: %s"), bPlatesValid ? TEXT("PASSED") : TEXT("FAILED"));
 
+    DetectAndClassifyBoundaries(PlanetState);
+
     UpdateMesh();
 }
 
@@ -138,6 +141,7 @@ void APlanetActor::SimulateSteps(int32 StepCount)
     for (int32 StepIndex = 0; StepIndex < ClampedStepCount; ++StepIndex)
     {
         MovePlates(PlanetState, PTP::DeltaT);
+        DetectAndClassifyBoundaries(PlanetState);
     }
 
     UpdateMesh();

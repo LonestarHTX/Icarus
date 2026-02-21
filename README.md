@@ -7,6 +7,7 @@ Procedural tectonic planet generation in Unreal Engine 5.7, based on the 2019 pa
 - Step 2: Runtime rendering actor (`APlanetActor`) with RealtimeMesh Pro, visualization modes, and editor-time generation.
 - Step 3: Plate initialization (`~40` plates), seeded Voronoi-style flood fill, crust/elevation initialization, and per-plate angular motion metadata.
 - Step 4: Geodetic plate drift (`DeltaT = 2 My`) with per-plate rigid rotation, parallel sample updates, simulation stepping, and playback controls.
+- Step 5: Boundary detection/classification (convergent/divergent/transform), per-sample boundary metadata, and per-plate `DistToFront` geodesic distance field.
 - Map Export: Equirectangular PNG export layers (`PlateID`, `Elevation`, `ContinentalMask`, `BoundaryType`, `Velocity`, `Composite`) with console commands.
 
 ## Repository Layout
@@ -52,6 +53,7 @@ Tectonic.Reset
 ```
 
 `Tectonic.Step N` advances by `N * 2 My`, updates the mesh, and exports map layers to `Saved/TectonicMaps/` when enabled on `APlanetActor`.
+Each step now logs boundary summary stats (`segments`, `boundary sample ratio`, `DistToFront` min/max/mean).
 
 ## Branching
 - `main` stays buildable.

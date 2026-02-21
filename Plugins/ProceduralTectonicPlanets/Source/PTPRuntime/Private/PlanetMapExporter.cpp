@@ -82,7 +82,10 @@ FLinearColor LayerColor(const FTectonicData& Data, const int32 Index, const EMap
     case EMapLayer::ContinentalMask:
         return PTPMapColor::ContinentalMaskToColor(Data.IsContinental(Index));
     case EMapLayer::BoundaryType:
-        return PTPMapColor::BoundaryTypeToColor(Data.GetBoundaryType(Index), Data.GetBoundaryStress(Index));
+        return PTPMapColor::BoundaryTypeToColor(
+            Data.GetBoundaryType(Index),
+            Data.GetBoundaryConvergenceType(Index),
+            Data.GetBoundaryStress(Index));
     case EMapLayer::Velocity:
         return PTPMapColor::VelocityToColor(Data.GetVelocity(Index));
     case EMapLayer::Composite:
@@ -246,7 +249,10 @@ TArray<FColor> UPlanetMapExporter::RenderLayer(
                 const EBoundaryType BoundaryType = Data.GetBoundaryType(NearestIndex);
                 if (BoundaryType != EBoundaryType::None)
                 {
-                    const FLinearColor BoundaryColor = PTPMapColor::BoundaryTypeToColor(BoundaryType, Data.GetBoundaryStress(NearestIndex));
+                    const FLinearColor BoundaryColor = PTPMapColor::BoundaryTypeToColor(
+                        BoundaryType,
+                        Data.GetBoundaryConvergenceType(NearestIndex),
+                        Data.GetBoundaryStress(NearestIndex));
                     Color = PTPMapColor::AlphaBlend(Color, BoundaryColor, 0.6f);
                 }
 

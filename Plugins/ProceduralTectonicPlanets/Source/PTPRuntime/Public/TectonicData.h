@@ -15,6 +15,15 @@ enum class EBoundaryType : uint8
     Transform
 };
 
+UENUM(BlueprintType)
+enum class EBoundaryConvergenceType : uint8
+{
+    None,
+    OceanicSubduction,
+    OceanOceanSubduction,
+    ContinentalCollision
+};
+
 USTRUCT(BlueprintType)
 struct PTPRUNTIME_API FTectonicData
 {
@@ -36,6 +45,9 @@ struct PTPRUNTIME_API FTectonicData
     TArray<EBoundaryType> BoundaryTypes;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tectonic")
+    TArray<EBoundaryConvergenceType> BoundaryConvergenceTypes;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tectonic")
     TArray<float> BoundaryStress;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tectonic")
@@ -47,6 +59,7 @@ struct PTPRUNTIME_API FTectonicData
     double GetElevation(int32 Index) const;
     bool IsContinental(int32 Index) const;
     EBoundaryType GetBoundaryType(int32 Index) const;
+    EBoundaryConvergenceType GetBoundaryConvergenceType(int32 Index) const;
     double GetBoundaryStress(int32 Index) const;
     FVector3d GetVelocity(int32 Index) const;
 

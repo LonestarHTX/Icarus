@@ -11,6 +11,7 @@ FArchive& operator<<(FArchive& Ar, FPlate& Plate)
     Ar << Plate.StepRotation;
     Ar << Plate.SeedSampleIndex;
     Ar << Plate.Area;
+    Ar << Plate.BoundarySamples;
 
     if (Ar.IsLoading())
     {

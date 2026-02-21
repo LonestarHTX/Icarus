@@ -17,6 +17,7 @@ struct FPlate
 
     int32 SeedSampleIndex = -1;
     float Area = 0.0f;
+    TArray<int32> BoundarySamples;
 
     friend PTPCORE_API FArchive& operator<<(FArchive& Ar, FPlate& Plate);
 };

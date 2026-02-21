@@ -10,5 +10,7 @@ FArchive& operator<<(FArchive& Ar, FPlanetState& State)
     Ar << State.AdjacencyNeighbors;
     Ar << State.NumPlates;
     Ar << State.Plates;
+    Ar << State.SampleBoundaryInfo;
+    Ar << State.BoundaryRegistry;
     return Ar;
 }

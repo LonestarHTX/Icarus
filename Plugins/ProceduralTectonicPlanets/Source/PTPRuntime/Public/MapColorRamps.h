@@ -79,17 +79,21 @@ inline FLinearColor ContinentalMaskToColor(bool bIsContinental)
         : FLinearColor(0.15f, 0.25f, 0.55f, 1.0f);
 }
 
-inline FLinearColor BoundaryTypeToColor(EBoundaryType BoundaryType, double Stress)
+inline FLinearColor BoundaryTypeToColor(EBoundaryType BoundaryType, EBoundaryConvergenceType ConvergenceType, double Stress)
 {
     const float Brightness = static_cast<float>(FMath::Clamp(0.35 + Stress * 0.65, 0.2, 1.0));
     switch (BoundaryType)
     {
     case EBoundaryType::Convergent:
-        return FLinearColor(Brightness, 0.08f * Brightness, 0.08f * Brightness, 1.0f);
+        if (ConvergenceType == EBoundaryConvergenceType::ContinentalCollision)
+        {
+            return FLinearColor(0.90f * Brightness, 0.50f * Brightness, 0.10f * Brightness, 1.0f);
+        }
+        return FLinearColor(0.90f * Brightness, 0.10f * Brightness, 0.10f * Brightness, 1.0f);
     case EBoundaryType::Divergent:
-        return FLinearColor(0.08f * Brightness, 0.20f * Brightness, Brightness, 1.0f);
+        return FLinearColor(0.10f * Brightness, 0.30f * Brightness, 0.90f * Brightness, 1.0f);
     case EBoundaryType::Transform:
-        return FLinearColor(0.08f * Brightness, Brightness, 0.18f * Brightness, 1.0f);
+        return FLinearColor(0.10f * Brightness, 0.80f * Brightness, 0.20f * Brightness, 1.0f);
     case EBoundaryType::None:
     default:
         return FLinearColor(0.15f, 0.15f, 0.15f, 1.0f);
