@@ -4,7 +4,8 @@
 1. Create a branch from `main`.
 2. Keep changes scoped to one concern.
 3. Build `IcarusEditor` before opening a PR.
-4. Open a PR with problem statement, approach, and validation evidence.
+4. If touching generation/export logic, validate in-editor and attach output evidence.
+5. Open a PR with problem statement, approach, and validation evidence.
 
 ## Coding Standards
 - Follow Unreal C++ conventions (`F` types, `E` enums, `b` bool prefix, PascalCase functions).
@@ -21,4 +22,4 @@ Use conventional-style summaries:
 - Build passes locally.
 - No generated folders committed (`Binaries`, `Intermediate`, `Saved`, `DerivedDataCache`).
 - New behavior is documented in `README.md` when relevant.
-
+- For map/export changes, include at least one output image from `Saved/TectonicMaps/` in the PR description.

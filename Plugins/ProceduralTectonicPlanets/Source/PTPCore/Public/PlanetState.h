@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "CrustSample.h"
+#include "Plate.h"
 
 struct FPlanetState
 {
@@ -14,6 +15,9 @@ struct FPlanetState
 
     TArray<int32> AdjacencyOffsets;
     TArray<int32> AdjacencyNeighbors;
+
+    int32 NumPlates = 0;
+    TArray<FPlate> Plates;
 
     friend PTPCORE_API FArchive& operator<<(FArchive& Ar, FPlanetState& State);
 };

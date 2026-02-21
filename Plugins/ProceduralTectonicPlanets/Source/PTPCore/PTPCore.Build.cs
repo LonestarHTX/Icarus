@@ -9,6 +9,7 @@ public class PTPCore : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[]
         {
             "Core",
+            "CoreUObject",
             "GeometryCore"
         });
     }

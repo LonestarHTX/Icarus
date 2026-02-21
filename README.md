@@ -5,6 +5,8 @@ Procedural tectonic planet generation in Unreal Engine 5.7, based on the 2019 pa
 ## Current Status
 - Step 1: Fibonacci sphere sampling, spherical Delaunay triangulation, CSR adjacency, geometry validation.
 - Step 2: Runtime rendering actor (`APlanetActor`) with RealtimeMesh Pro, visualization modes, and editor-time generation.
+- Step 3: Plate initialization (`~40` plates), seeded Voronoi-style flood fill, crust/elevation initialization, and per-plate angular motion metadata.
+- Map Export: Equirectangular PNG export layers (`PlateID`, `Elevation`, `ContinentalMask`, `BoundaryType`, `Velocity`, `Composite`) with console commands.
 
 ## Repository Layout
 - `Source/Icarus/`: game module.
@@ -25,7 +27,18 @@ powershell.exe -NoProfile -Command "& 'C:\Program Files\Epic Games\UE_5.7\Engine
 3. Assign a vertex-color material (unlit recommended).
 4. Click **Generate Planet** in Details.
 
+## Map Export
+Use editor console commands:
+
+```text
+TectonicExport.All
+TectonicExport.All 4096 2048
+TectonicExport.Layer Elevation
+TectonicExport.Layer Composite 4096 2048
+```
+
+Outputs are written to `Saved/TectonicMaps/`.
+
 ## Branching
 - `main` stays buildable.
 - Use short-lived feature branches (`feat/<name>`, `fix/<name>`).
-

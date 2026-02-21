@@ -8,5 +8,7 @@ FArchive& operator<<(FArchive& Ar, FPlanetState& State)
     Ar << State.TriangleIndices;
     Ar << State.AdjacencyOffsets;
     Ar << State.AdjacencyNeighbors;
+    Ar << State.NumPlates;
+    Ar << State.Plates;
     return Ar;
 }

@@ -30,6 +30,11 @@
       "Name": "PTPRuntime",
       "Type": "Runtime",
       "LoadingPhase": "Default"
+    },
+    {
+      "Name": "PTPRuntimeEditor",
+      "Type": "Editor",
+      "LoadingPhase": "Default"
     }
   ]
 }

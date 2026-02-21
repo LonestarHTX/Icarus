@@ -8,6 +8,7 @@
 #include "Materials/MaterialExpressionVertexColor.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "PlanetColorRamp.h"
+#include "PlateInitializer.h"
 #include "RealtimeMeshComponent.h"
 #include "RealtimeMeshSimple.h"
 #include "SphericalTriangulation.h"
@@ -40,6 +41,7 @@ void APlanetActor::GeneratePlanet()
     {
         SampleCount = ClampedSampleCount;
     }
+    GenerationParams.SampleCount = SampleCount;
 
     TArray<FVector> Positions;
 
@@ -84,6 +86,16 @@ void APlanetActor::GeneratePlanet()
 
     const bool bValid = ValidatePlanetGeometry(PlanetState);
     UE_LOG(LogTemp, Log, TEXT("[PTP] Planet validation: %s"), bValid ? TEXT("PASSED") : TEXT("FAILED"));
+
+    {
+        const double StartTime = FPlatformTime::Seconds();
+        InitializePlates(PlanetState, GenerationParams);
+        const double ElapsedMs = (FPlatformTime::Seconds() - StartTime) * 1000.0;
+        UE_LOG(LogTemp, Log, TEXT("[PTP] Plate initialization: %.1f ms (%d plates)"), ElapsedMs, PlanetState.NumPlates);
+    }
+
+    const bool bPlatesValid = ValidatePlateInitialization(PlanetState);
+    UE_LOG(LogTemp, Log, TEXT("[PTP] Plate validation: %s"), bPlatesValid ? TEXT("PASSED") : TEXT("FAILED"));
 
     UpdateMesh();
 }
@@ -131,6 +143,7 @@ void APlanetActor::UpdateMesh()
             .SetColor(ResolveSampleColor(Sample));
     }
 
+    // Triangle indices already have correct CCW winding (fixed by EnsureOutwardWinding in SphericalTriangulation)
     for (int32 TriangleBase = 0; TriangleBase + 2 < PlanetState.TriangleIndices.Num(); TriangleBase += 3)
     {
         Builder.AddTriangle(
@@ -192,7 +205,7 @@ UMaterialInterface* APlanetActor::GetOrCreateDefaultMaterial()
     UMaterial* Material = NewObject<UMaterial>(this, FName("DefaultPlanetMaterial"), RF_Transient);
     Material->MaterialDomain = EMaterialDomain::MD_Surface;
     Material->SetShadingModel(EMaterialShadingModel::MSM_Unlit);
-    Material->TwoSided = false;
+    Material->TwoSided = true;  // Two-sided to ensure visibility regardless of winding
 
     // Create vertex color expression
     UMaterialExpressionVertexColor* VertexColorExpr = NewObject<UMaterialExpressionVertexColor>(Material);

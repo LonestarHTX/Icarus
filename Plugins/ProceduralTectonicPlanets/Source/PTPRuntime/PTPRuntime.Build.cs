@@ -11,6 +11,7 @@ public class PTPRuntime : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "ImageWrapper",
             "PTPCore",
             "PTPSimulation",
             "RealtimeMeshComponent",

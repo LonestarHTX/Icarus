@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+#include "PlanetGenerationParams.h"
 #include "PlanetState.h"
 
 #include "PlanetActor.generated.h"
@@ -43,8 +44,13 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet", meta = (ClampMin = "100", ClampMax = "1000000"))
     int32 SampleCount = 500000;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet")
+    FPlanetGenerationParams GenerationParams;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Rendering")
     TObjectPtr<UMaterialInterface> VertexColorMaterial = nullptr;
+
+    const FPlanetState& GetPlanetState() const { return PlanetState; }
 
 #if WITH_EDITOR
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

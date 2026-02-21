@@ -5,10 +5,11 @@ This is an Unreal Engine 5.7 project (`Icarus.uproject`). Core game module code 
 
 Plugins are under `Plugins/`:
 - `Plugins/RealtimeMeshComponent/`: third-party plugin dependency.
-- `Plugins/ProceduralTectonicPlanets/`: in-repo plugin with three modules:
+- `Plugins/ProceduralTectonicPlanets/`: in-repo plugin with four modules:
   - `PTPCore` (math/data, triangulation, adjacency)
-  - `PTPSimulation` (simulation layer stubs)
-  - `PTPRuntime` (runtime/editor integration stubs)
+  - `PTPSimulation` (plate initialization + simulation-layer logic)
+  - `PTPRuntime` (runtime actor rendering, map export, console commands)
+  - `PTPRuntimeEditor` (editor camera control panel integration)
 
 Keep public headers in `Public/` and implementation in `Private/` per Unreal module conventions.
 
@@ -26,6 +27,7 @@ powershell.exe -NoProfile -Command "& 'C:\Program Files\Epic Games\UE_5.7\Engine
 ```
 
 Use Unreal Editor for runtime verification and log inspection (`Saved/Logs/Icarus.log`).
+Map exports are written to `Saved/TectonicMaps/` via `TectonicExport.All` and `TectonicExport.Layer`.
 
 ## Coding Style & Naming Conventions
 - Use Unreal C++ style: tabs/spaces as in surrounding files, include order stable, minimal comments.
@@ -37,6 +39,7 @@ Use Unreal Editor for runtime verification and log inspection (`Saved/Logs/Icaru
 No dedicated test module is currently checked in. Validate changes by:
 - Building `IcarusEditor` without warnings/errors.
 - Running geometry validation paths in `PTPCore` and checking `UE_LOG` output.
+- For export changes, run at least one `TectonicExport.Layer` command and verify no banding/artifacts.
 - Adding focused tests later via Unreal Automation Framework when simulation behavior is introduced.
 
 ## Commit & Pull Request Guidelines
