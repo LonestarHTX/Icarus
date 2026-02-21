@@ -374,9 +374,25 @@ bool BuildPlateBVH(const FPlanetState& State, const int32 PlateIndex, FPlateBVH&
             continue;
         }
 
-        if (State.Samples[A].PlateIndex != PlateIndex
-            || State.Samples[B].PlateIndex != PlateIndex
-            || State.Samples[C].PlateIndex != PlateIndex)
+        const int32 PlateA = State.Samples[A].PlateIndex;
+        const int32 PlateB = State.Samples[B].PlateIndex;
+        const int32 PlateC = State.Samples[C].PlateIndex;
+
+        int32 OwnerPlate = PlateA;
+        if (PlateA == PlateB || PlateA == PlateC)
+        {
+            OwnerPlate = PlateA;
+        }
+        else if (PlateB == PlateC)
+        {
+            OwnerPlate = PlateB;
+        }
+        else if (PlateA == INDEX_NONE)
+        {
+            OwnerPlate = (PlateB != INDEX_NONE) ? PlateB : PlateC;
+        }
+
+        if (OwnerPlate != PlateIndex)
         {
             continue;
         }
