@@ -1,0 +1,23 @@
+# Unreal generated
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+
+# Visual Studio
+*.VC.db
+*.VC.opendb
+*.suo
+*.opensdf
+*.sdf
+
+# Plugin generated artifacts
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# Optional local caches/logs
+*.log
+
+# Local agent settings
+.claude/
