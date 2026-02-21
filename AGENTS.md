@@ -7,7 +7,7 @@ Plugins are under `Plugins/`:
 - `Plugins/RealtimeMeshComponent/`: third-party plugin dependency.
 - `Plugins/ProceduralTectonicPlanets/`: in-repo plugin with four modules:
   - `PTPCore` (math/data, triangulation, adjacency)
-  - `PTPSimulation` (plate initialization + simulation-layer logic)
+  - `PTPSimulation` (plate initialization, plate motion, boundaries, subduction, global resampling)
   - `PTPRuntime` (runtime actor rendering, map export, console commands)
   - `PTPRuntimeEditor` (editor camera control panel integration)
 
@@ -42,6 +42,7 @@ No dedicated test module is currently checked in. Validate changes by:
 - Running geometry validation paths in `PTPCore` and checking `UE_LOG` output.
 - For export changes, run at least one `TectonicExport.Layer` command and verify no banding/artifacts.
 - For movement changes, run `Tectonic.Step 10` and verify plate drift is coherent (no fragmented plate IDs).
+- For resampling changes, run at least `Tectonic.Step 10` with `bEnableGlobalResampling=true` and verify logs include `=== GLOBAL RESAMPLE` and classification totals.
 - Adding focused tests later via Unreal Automation Framework when simulation behavior is introduced.
 
 ## Commit & Pull Request Guidelines

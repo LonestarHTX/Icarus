@@ -13,6 +13,7 @@
 #include "BoundaryDetection.h"
 #include "PlateInitializer.h"
 #include "PlateMotion.h"
+#include "Resampling.h"
 #include "Subduction.h"
 #include "RealtimeMeshComponent.h"
 #include "RealtimeMeshSimple.h"
@@ -62,6 +63,7 @@ bool APlanetActor::ShouldTickIfViewportsOnly() const
 void APlanetActor::GeneratePlanet()
 {
     bSimulationPlaybackActive = false;
+    StepsSinceResample = 0;
     SetActorTickEnabled(false);
 
     const int32 ClampedSampleCount = FMath::Max(SampleCount, 4);
@@ -139,11 +141,19 @@ void APlanetActor::SimulateSteps(int32 StepCount)
     }
 
     const int32 ClampedStepCount = FMath::Max(StepCount, 1);
+    const int32 EffectiveResampleInterval = FMath::Max(1, ResampleIntervalSteps);
     for (int32 StepIndex = 0; StepIndex < ClampedStepCount; ++StepIndex)
     {
         MovePlates(PlanetState, PTP::DeltaT);
         DetectAndClassifyBoundaries(PlanetState);
         ProcessSubduction(PlanetState, PTP::DeltaT);
+        ++StepsSinceResample;
+
+        if (bEnableGlobalResampling && StepsSinceResample >= EffectiveResampleInterval)
+        {
+            GlobalResample(PlanetState);
+            StepsSinceResample = 0;
+        }
     }
 
     UpdateMesh();
@@ -176,6 +186,7 @@ void APlanetActor::StopSimulationPlayback()
 
 void APlanetActor::ResetSimulation()
 {
+    StepsSinceResample = 0;
     GeneratePlanet();
 }
 

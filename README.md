@@ -9,6 +9,7 @@ Procedural tectonic planet generation in Unreal Engine 5.7, based on the 2019 pa
 - Step 4: Geodetic plate drift (`DeltaT = 2 My`) with per-plate rigid rotation, parallel sample updates, simulation stepping, and playback controls.
 - Step 5: Boundary detection/classification (convergent/divergent/transform), per-sample boundary metadata, and per-plate `DistToFront` geodesic distance field.
 - Step 6: Subduction uplift on overriding plates using distance/speed/height transfer functions, fold direction updates, and optional slab-pull axis correction.
+- Step 8: Global resampling with cached Fibonacci lattice/topology reuse, per-plate BVH point queries, overlap resolution, and divergent-gap oceanic crust generation.
 - Map Export: Equirectangular PNG export layers (`PlateID`, `Elevation`, `ContinentalMask`, `BoundaryType`, `Velocity`, `Composite`) with console commands.
 
 ## Repository Layout
@@ -54,7 +55,10 @@ Tectonic.Reset
 ```
 
 `Tectonic.Step N` advances by `N * 2 My`, updates the mesh, and exports map layers to `Saved/TectonicMaps/` when enabled on `APlanetActor`.
-Each step now logs boundary summary stats (`segments`, `boundary sample ratio`, `DistToFront` min/max/mean).
+Each step logs boundary summary stats (`segments`, `boundary sample ratio`, `DistToFront` min/max/mean).
+Global resampling is controlled on `APlanetActor` with:
+- `bEnableGlobalResampling`
+- `ResampleIntervalSteps` (default `10`)
 
 ## Branching
 - `main` stays buildable.

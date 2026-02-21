@@ -73,6 +73,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Simulation")
     bool bExportMapsAfterStepping = false;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Simulation")
+    bool bEnableGlobalResampling = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Simulation", meta = (ClampMin = "1", UIMin = "1", UIMax = "120"))
+    int32 ResampleIntervalSteps = 10;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Rendering")
     TObjectPtr<UMaterialInterface> VertexColorMaterial = nullptr;
 
@@ -91,6 +97,7 @@ protected:
 private:
     bool bMeshInitialized = false;
     bool bSimulationPlaybackActive = false;
+    int32 StepsSinceResample = 0;
 
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInterface> DefaultVertexColorMaterial = nullptr;
