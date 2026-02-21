@@ -20,6 +20,10 @@ constexpr float TriangleInsideEpsilon = 1.0e-8f;
 constexpr int32 GridResolution = 64;
 constexpr int32 TargetNearestCandidates = 32;
 constexpr int32 MaxSearchRing = GridResolution;
+constexpr int32 FallbackNearestSampleCount = 6;
+constexpr int32 FallbackCandidateCount = 128;
+constexpr float GapThresholdSpacingFactor = 6.0f;
+constexpr float GapThresholdMinKm = 220.0f;
 
 enum class EPointClassification : uint8
 {
@@ -149,7 +153,8 @@ FSpatialGrid BuildSpatialGrid(const FPlanetState& State)
 void CollectNearestCandidates(
     const FVector& QueryPoint,
     const FSpatialGrid& Grid,
-    TArray<int32>& OutCandidates)
+    TArray<int32>& OutCandidates,
+    const int32 DesiredCount = TargetNearestCandidates)
 {
     OutCandidates.Reset();
     const int32 CellX = CellCoord(QueryPoint.X);
@@ -185,9 +190,59 @@ void CollectNearestCandidates(
             }
         }
 
-        if (OutCandidates.Num() >= TargetNearestCandidates)
+        if (OutCandidates.Num() >= DesiredCount)
         {
             return;
+        }
+    }
+}
+
+void GatherNearestSamples(
+    const FVector& QueryPoint,
+    const FPlanetState& State,
+    const FSpatialGrid& Grid,
+    const int32 K,
+    TArray<int32>& OutSortedNearest)
+{
+    OutSortedNearest.Reset();
+    if (K <= 0 || State.Samples.IsEmpty())
+    {
+        return;
+    }
+
+    TArray<int32> Candidates;
+    CollectNearestCandidates(QueryPoint, Grid, Candidates, FMath::Max(FallbackCandidateCount, K * 4));
+    if (Candidates.IsEmpty())
+    {
+        return;
+    }
+
+    Candidates.Sort([&State, &QueryPoint](const int32 A, const int32 B)
+    {
+        if (!State.Samples.IsValidIndex(A))
+        {
+            return false;
+        }
+        if (!State.Samples.IsValidIndex(B))
+        {
+            return true;
+        }
+
+        const float DistA = FVector::DistSquared(QueryPoint, State.Samples[A].Position);
+        const float DistB = FVector::DistSquared(QueryPoint, State.Samples[B].Position);
+        return DistA < DistB;
+    });
+
+    OutSortedNearest.Reserve(K);
+    for (const int32 Candidate : Candidates)
+    {
+        if (State.Samples.IsValidIndex(Candidate))
+        {
+            OutSortedNearest.Add(Candidate);
+            if (OutSortedNearest.Num() >= K)
+            {
+                break;
+            }
         }
     }
 }
@@ -203,7 +258,7 @@ void FindNearestSamplesDistinctPlates(
     OutNearestB = INDEX_NONE;
 
     TArray<int32> Candidates;
-    CollectNearestCandidates(QueryPoint, Grid, Candidates);
+    CollectNearestCandidates(QueryPoint, Grid, Candidates, FallbackCandidateCount);
 
     double BestA = MAX_dbl;
     double BestB = MAX_dbl;
@@ -374,25 +429,9 @@ bool BuildPlateBVH(const FPlanetState& State, const int32 PlateIndex, FPlateBVH&
             continue;
         }
 
-        const int32 PlateA = State.Samples[A].PlateIndex;
-        const int32 PlateB = State.Samples[B].PlateIndex;
-        const int32 PlateC = State.Samples[C].PlateIndex;
-
-        int32 OwnerPlate = PlateA;
-        if (PlateA == PlateB || PlateA == PlateC)
-        {
-            OwnerPlate = PlateA;
-        }
-        else if (PlateB == PlateC)
-        {
-            OwnerPlate = PlateB;
-        }
-        else if (PlateA == INDEX_NONE)
-        {
-            OwnerPlate = (PlateB != INDEX_NONE) ? PlateB : PlateC;
-        }
-
-        if (OwnerPlate != PlateIndex)
+        if (State.Samples[A].PlateIndex != PlateIndex
+            || State.Samples[B].PlateIndex != PlateIndex
+            || State.Samples[C].PlateIndex != PlateIndex)
         {
             continue;
         }
@@ -631,6 +670,109 @@ FCrustSample BuildGapSample(
     return Out;
 }
 
+float ComputeAverageSampleSpacingKm(const int32 NumSamples)
+{
+    const double AreaPerSample = (4.0 * PI * static_cast<double>(PTP::Radius) * static_cast<double>(PTP::Radius))
+        / static_cast<double>(FMath::Max(1, NumSamples));
+    return static_cast<float>(FMath::Sqrt(AreaPerSample));
+}
+
+bool BuildFallbackSampleFromNearest(
+    const FVector& Position,
+    const FPlanetState& OldState,
+    const FSpatialGrid& Grid,
+    const float GapDistanceThresholdKm,
+    FCrustSample& OutSample)
+{
+    TArray<int32> Nearest;
+    GatherNearestSamples(Position, OldState, Grid, FallbackCandidateCount, Nearest);
+    if (Nearest.IsEmpty())
+    {
+        return false;
+    }
+
+    const int32 NearestIndex = Nearest[0];
+    if (!OldState.Samples.IsValidIndex(NearestIndex))
+    {
+        return false;
+    }
+
+    const FCrustSample& NearestSample = OldState.Samples[NearestIndex];
+    if (!OldState.Plates.IsValidIndex(NearestSample.PlateIndex))
+    {
+        return false;
+    }
+
+    const float NearestDistanceKm = ResampleGreatCircleDistanceKm(Position, NearestSample.Position);
+    if (NearestDistanceKm > GapDistanceThresholdKm)
+    {
+        return false;
+    }
+
+    TArray<int32, TInlineAllocator<FallbackNearestSampleCount>> SamePlate;
+    SamePlate.Reserve(FallbackNearestSampleCount);
+    for (const int32 CandidateIndex : Nearest)
+    {
+        if (!OldState.Samples.IsValidIndex(CandidateIndex))
+        {
+            continue;
+        }
+
+        if (OldState.Samples[CandidateIndex].PlateIndex == NearestSample.PlateIndex)
+        {
+            SamePlate.Add(CandidateIndex);
+            if (SamePlate.Num() >= FallbackNearestSampleCount)
+            {
+                break;
+            }
+        }
+    }
+
+    if (SamePlate.IsEmpty())
+    {
+        return false;
+    }
+
+    double WeightSum = 0.0;
+    double ElevationSum = 0.0;
+    double ThicknessSum = 0.0;
+    double OceanicAgeSum = 0.0;
+    double OrogenyAgeSum = 0.0;
+    FVector RidgeSum = FVector::ZeroVector;
+    FVector FoldSum = FVector::ZeroVector;
+
+    for (const int32 SampleIndex : SamePlate)
+    {
+        const FCrustSample& Source = OldState.Samples[SampleIndex];
+        const float DistKm = ResampleGreatCircleDistanceKm(Position, Source.Position);
+        const double Weight = 1.0 / FMath::Max(1.0e-3, static_cast<double>(DistKm));
+        WeightSum += Weight;
+        ElevationSum += static_cast<double>(Source.Elevation) * Weight;
+        ThicknessSum += static_cast<double>(Source.Thickness) * Weight;
+        OceanicAgeSum += static_cast<double>(Source.OceanicAge) * Weight;
+        OrogenyAgeSum += static_cast<double>(Source.OrogenyAge) * Weight;
+        RidgeSum += Source.RidgeDirection * static_cast<float>(Weight);
+        FoldSum += Source.FoldDirection * static_cast<float>(Weight);
+    }
+
+    const double SafeWeightSum = FMath::Max(1.0e-8, WeightSum);
+    const float InvWeightSum = static_cast<float>(1.0 / SafeWeightSum);
+
+    OutSample = FCrustSample();
+    OutSample.Position = Position;
+    OutSample.PlateIndex = NearestSample.PlateIndex;
+    OutSample.CrustType = NearestSample.CrustType;
+    OutSample.OrogenyType = NearestSample.OrogenyType;
+    OutSample.Elevation = static_cast<float>(ElevationSum / SafeWeightSum);
+    OutSample.Thickness = static_cast<float>(ThicknessSum / SafeWeightSum);
+    OutSample.OceanicAge = static_cast<float>(OceanicAgeSum / SafeWeightSum);
+    OutSample.OrogenyAge = static_cast<float>(OrogenyAgeSum / SafeWeightSum);
+    OutSample.RidgeDirection = ResampleProjectToTangent(RidgeSum * InvWeightSum, Position);
+    OutSample.FoldDirection = ResampleProjectToTangent(FoldSum * InvWeightSum, Position);
+    OutSample.DistToFront = TNumericLimits<float>::Max();
+    return true;
+}
+
 void RebuildPlateMetadata(FPlanetState& State)
 {
     State.NumPlates = State.Plates.Num();
@@ -676,7 +818,7 @@ void RebuildPlateMetadata(FPlanetState& State)
 }
 }
 
-bool GlobalResample(FPlanetState& State)
+bool GlobalResample(FPlanetState& State, FGlobalResampleStats* OutStats)
 {
     if (State.Samples.IsEmpty() || State.Plates.IsEmpty() || State.SampleCount != State.Samples.Num())
     {
@@ -760,9 +902,13 @@ bool GlobalResample(FPlanetState& State)
     FThreadSafeCounter GapCount;
     FThreadSafeCounter OverlapCount;
     FThreadSafeCounter NormalCount;
+    FThreadSafeCounter FallbackCount;
+    const float GapDistanceThresholdKm = FMath::Max(
+        GapThresholdMinKm,
+        GapThresholdSpacingFactor * ComputeAverageSampleSpacingKm(OldState.SampleCount));
 
     const double TransferStart = FPlatformTime::Seconds();
-    ParallelFor(OldState.SampleCount, [&OldState, &PlateBVHs, &SpatialGrid, &QueryResults, &NewSamples, &GapCount, &OverlapCount, &NormalCount](const int32 SampleIndex)
+    ParallelFor(OldState.SampleCount, [&OldState, &PlateBVHs, &SpatialGrid, &QueryResults, &NewSamples, &GapCount, &OverlapCount, &NormalCount, &FallbackCount, GapDistanceThresholdKm](const int32 SampleIndex)
     {
         const FVector Position = GCachedLattice.Positions[SampleIndex];
         const FPointQueryResult& Query = QueryResults[SampleIndex];
@@ -782,6 +928,15 @@ bool GlobalResample(FPlanetState& State)
         }
         else if (Query.Type == EPointClassification::Overlap)
         {
+            FCrustSample FallbackSample;
+            if (BuildFallbackSampleFromNearest(Position, OldState, SpatialGrid, GapDistanceThresholdKm, FallbackSample))
+            {
+                NewSamples[SampleIndex] = FallbackSample;
+                NormalCount.Increment();
+                FallbackCount.Increment();
+                return;
+            }
+
             if (PlateBVHs.IsValidIndex(Query.PrimaryHit.PlateIndex) && PlateBVHs.IsValidIndex(Query.SecondaryHit.PlateIndex))
             {
                 const FCrustSample A = InterpolateFromTriangle(
@@ -798,6 +953,15 @@ bool GlobalResample(FPlanetState& State)
                 OverlapCount.Increment();
                 return;
             }
+        }
+
+        FCrustSample FallbackSample;
+        if (BuildFallbackSampleFromNearest(Position, OldState, SpatialGrid, GapDistanceThresholdKm, FallbackSample))
+        {
+            NewSamples[SampleIndex] = FallbackSample;
+            NormalCount.Increment();
+            FallbackCount.Increment();
+            return;
         }
 
         NewSamples[SampleIndex] = BuildGapSample(Position, OldState, SpatialGrid);
@@ -818,10 +982,23 @@ bool GlobalResample(FPlanetState& State)
     const double RebuildMs = (FPlatformTime::Seconds() - RebuildStart) * 1000.0;
     const double TotalMs = (FPlatformTime::Seconds() - StartTime) * 1000.0;
 
+    if (OutStats)
+    {
+        OutStats->NormalCount = NormalCount.GetValue();
+        OutStats->FallbackCount = FallbackCount.GetValue();
+        OutStats->GapCount = GapCount.GetValue();
+        OutStats->OverlapCount = OverlapCount.GetValue();
+        OutStats->BvhBuildMs = BVHMs;
+        OutStats->QueryMs = QueryMs;
+        OutStats->TransferMs = TransferMs;
+        OutStats->RebuildMs = RebuildMs;
+        OutStats->TotalMs = TotalMs;
+    }
+
     UE_LOG(LogTemp, Log, TEXT("[PTP] Resample BVH: %.1f ms (%d plates)"), BVHMs, State.Plates.Num());
     UE_LOG(LogTemp, Log, TEXT("[PTP] Resample queries: %.1f ms (%d points)"), QueryMs, State.SampleCount);
-    UE_LOG(LogTemp, Log, TEXT("[PTP] Resample classification: %d normal, %d gap, %d overlap"),
-        NormalCount.GetValue(), GapCount.GetValue(), OverlapCount.GetValue());
+    UE_LOG(LogTemp, Log, TEXT("[PTP] Resample classification: %d normal (%d fallback), %d gap, %d overlap"),
+        NormalCount.GetValue(), FallbackCount.GetValue(), GapCount.GetValue(), OverlapCount.GetValue());
     UE_LOG(LogTemp, Log, TEXT("[PTP] Resample transfer: %.1f ms"), TransferMs);
     UE_LOG(LogTemp, Log, TEXT("[PTP] Resample rebuild+boundaries: %.1f ms"), RebuildMs);
     UE_LOG(LogTemp, Log, TEXT("[PTP] Total resample: %.1f ms"), TotalMs);
