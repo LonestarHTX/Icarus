@@ -126,4 +126,6 @@ private:
     FReply OnResetSimulationClicked();
     void OnStepCountChanged(int32 NewValue);
     void OnStepCountCommitted(int32 NewValue, ETextCommit::Type CommitType);
+    FText GetSimulationStatusText() const;
+    FText GetSimulationTimeText() const;
 };

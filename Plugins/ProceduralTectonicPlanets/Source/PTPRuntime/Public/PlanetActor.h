@@ -52,6 +52,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Planet|Simulation")
     bool ExportCurrentMaps(int32 Width = 2048, int32 Height = 1024) const;
 
+    UFUNCTION(BlueprintCallable, Category = "Planet|Simulation")
+    bool IsSimulationPlaying() const { return bSimulationPlaybackActive; }
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet")
     EPlanetVisualizationMode VisualizationMode = EPlanetVisualizationMode::Elevation;
 
@@ -68,7 +71,7 @@ public:
     int32 PlaybackStepsPerTick = 1;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Simulation")
-    bool bExportMapsAfterStepping = true;
+    bool bExportMapsAfterStepping = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Rendering")
     TObjectPtr<UMaterialInterface> VertexColorMaterial = nullptr;

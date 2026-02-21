@@ -387,6 +387,26 @@ TSharedRef<SWidget> STectonicCameraControls::BuildPlanetSection()
 
             + SVerticalBox::Slot()
             .AutoHeight()
+            .Padding(0.0f, 2.0f, 0.0f, 2.0f)
+            [
+                SNew(STextBlock)
+                .Text(this, &STectonicCameraControls::GetSimulationStatusText)
+                .Font(FAppStyle::Get().GetFontStyle("SmallFont"))
+                .ColorAndOpacity(TectonicUI::SubheaderText)
+            ]
+
+            + SVerticalBox::Slot()
+            .AutoHeight()
+            .Padding(0.0f, 0.0f, 0.0f, 6.0f)
+            [
+                SNew(STextBlock)
+                .Text(this, &STectonicCameraControls::GetSimulationTimeText)
+                .Font(FAppStyle::Get().GetFontStyle("SmallFont"))
+                .ColorAndOpacity(TectonicUI::LabelText)
+            ]
+
+            + SVerticalBox::Slot()
+            .AutoHeight()
             .Padding(0.0f, 4.0f, 0.0f, 4.0f)
             [
                 MakeParameterRow(TEXT("Step Count"),
@@ -621,6 +641,8 @@ TSharedRef<SWidget> STectonicCameraControls::MakeZoomControls()
 
 EActiveTimerReturnType STectonicCameraControls::HandleActiveTick(double InCurrentTime, float InDeltaTime)
 {
+    FindPlanetActor();
+
     if (const TSharedPtr<FTectonicViewportClient> Pinned = ViewportClient.Pin())
     {
         Pinned->Tick(InDeltaTime);
@@ -1008,6 +1030,28 @@ void STectonicCameraControls::OnStepCountChanged(const int32 NewValue)
 void STectonicCameraControls::OnStepCountCommitted(const int32 NewValue, ETextCommit::Type CommitType)
 {
     OnStepCountChanged(NewValue);
+}
+
+FText STectonicCameraControls::GetSimulationStatusText() const
+{
+    if (const APlanetActor* Planet = CachedPlanetActor.Get())
+    {
+        return Planet->IsSimulationPlaying()
+            ? FText::FromString(TEXT("Status: Playing"))
+            : FText::FromString(TEXT("Status: Stopped"));
+    }
+
+    return FText::FromString(TEXT("Status: No Planet Actor"));
+}
+
+FText STectonicCameraControls::GetSimulationTimeText() const
+{
+    if (const APlanetActor* Planet = CachedPlanetActor.Get())
+    {
+        return FText::FromString(FString::Printf(TEXT("Time: %.2f My"), Planet->GetPlanetState().Time));
+    }
+
+    return FText::FromString(TEXT("Time: --"));
 }
 
 // Camera Controls
