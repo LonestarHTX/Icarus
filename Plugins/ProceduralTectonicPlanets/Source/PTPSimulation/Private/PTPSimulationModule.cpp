@@ -76,6 +76,7 @@ static FAutoConsoleCommand PTPResampleTestCommand(
 
         const int32 Total = FMath::Max(1, State.SampleCount);
         const double NormalRatio = static_cast<double>(Stats.NormalCount) / static_cast<double>(Total);
+        const double FallbackRatio = static_cast<double>(Stats.FallbackCount) / static_cast<double>(Total);
         const double GapRatio = static_cast<double>(Stats.GapCount) / static_cast<double>(Total);
         const double OverlapRatio = static_cast<double>(Stats.OverlapCount) / static_cast<double>(Total);
 
@@ -94,10 +95,11 @@ static FAutoConsoleCommand PTPResampleTestCommand(
             && bPlateIndexValid
             && NormalRatio >= 0.85
             && GapRatio <= 0.12
-            && OverlapRatio <= 0.12;
+            && OverlapRatio <= 0.001
+            && FallbackRatio <= 0.001;
 
-        UE_LOG(LogTemp, Log, TEXT("[PTP] ResampleTest ratios: normal=%.3f gap=%.3f overlap=%.3f"),
-            NormalRatio, GapRatio, OverlapRatio);
+        UE_LOG(LogTemp, Log, TEXT("[PTP] ResampleTest ratios: normal=%.3f fallback=%.3f gap=%.3f overlap=%.3f"),
+            NormalRatio, FallbackRatio, GapRatio, OverlapRatio);
         UE_LOG(LogTemp, Log, TEXT("[PTP] ResampleTest checks: sampleCount=%s plateIndexValid=%s"),
             State.Samples.Num() == NumPoints ? TEXT("true") : TEXT("false"),
             bPlateIndexValid ? TEXT("true") : TEXT("false"));
