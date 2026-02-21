@@ -13,6 +13,7 @@
 #include "BoundaryDetection.h"
 #include "PlateInitializer.h"
 #include "PlateMotion.h"
+#include "Subduction.h"
 #include "RealtimeMeshComponent.h"
 #include "RealtimeMeshSimple.h"
 #include "SphericalTriangulation.h"
@@ -142,6 +143,7 @@ void APlanetActor::SimulateSteps(int32 StepCount)
     {
         MovePlates(PlanetState, PTP::DeltaT);
         DetectAndClassifyBoundaries(PlanetState);
+        ProcessSubduction(PlanetState, PTP::DeltaT);
     }
 
     UpdateMesh();

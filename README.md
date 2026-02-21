@@ -8,6 +8,7 @@ Procedural tectonic planet generation in Unreal Engine 5.7, based on the 2019 pa
 - Step 3: Plate initialization (`~40` plates), seeded Voronoi-style flood fill, crust/elevation initialization, and per-plate angular motion metadata.
 - Step 4: Geodetic plate drift (`DeltaT = 2 My`) with per-plate rigid rotation, parallel sample updates, simulation stepping, and playback controls.
 - Step 5: Boundary detection/classification (convergent/divergent/transform), per-sample boundary metadata, and per-plate `DistToFront` geodesic distance field.
+- Step 6: Subduction uplift on overriding plates using distance/speed/height transfer functions, fold direction updates, and optional slab-pull axis correction.
 - Map Export: Equirectangular PNG export layers (`PlateID`, `Elevation`, `ContinentalMask`, `BoundaryType`, `Velocity`, `Composite`) with console commands.
 
 ## Repository Layout

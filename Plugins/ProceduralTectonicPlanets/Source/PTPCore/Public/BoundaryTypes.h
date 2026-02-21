@@ -24,6 +24,7 @@ struct FSampleBoundaryInfo
     EPTPBoundaryType BoundaryType = EPTPBoundaryType::None;
     EPTPConvergenceType ConvergenceType = EPTPConvergenceType::None;
     int32 AdjacentPlateIndex = INDEX_NONE;
+    int32 NearestConvergentSegmentIndex = INDEX_NONE;
     float BoundaryStress = 0.0f;
 
     friend PTPCORE_API FArchive& operator<<(FArchive& Ar, FSampleBoundaryInfo& Info);

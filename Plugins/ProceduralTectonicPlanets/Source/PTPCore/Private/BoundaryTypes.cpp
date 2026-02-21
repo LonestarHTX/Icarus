@@ -9,6 +9,7 @@ FArchive& operator<<(FArchive& Ar, FSampleBoundaryInfo& Info)
     Ar << BoundaryTypeByte;
     Ar << ConvergenceTypeByte;
     Ar << Info.AdjacentPlateIndex;
+    Ar << Info.NearestConvergentSegmentIndex;
     Ar << Info.BoundaryStress;
 
     if (Ar.IsLoading())

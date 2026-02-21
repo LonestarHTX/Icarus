@@ -167,6 +167,7 @@ void ComputeDistanceToFront(FPlanetState& State)
     {
         float Distance = 0.0f;
         int32 SampleIndex = INDEX_NONE;
+        int32 SegmentIndex = INDEX_NONE;
     };
 
     struct FQueueNodeCompare
@@ -179,9 +180,16 @@ void ComputeDistanceToFront(FPlanetState& State)
 
     ParallelFor(State.Plates.Num(), [&State](const int32 PlateIndex)
     {
-        TArray<int32> Seeds;
-        for (const FBoundarySegment& Segment : State.BoundaryRegistry.Segments)
+        struct FSeed
         {
+            int32 SampleIndex = INDEX_NONE;
+            int32 SegmentIndex = INDEX_NONE;
+        };
+
+        TArray<FSeed> Seeds;
+        for (int32 SegmentIndex = 0; SegmentIndex < State.BoundaryRegistry.Segments.Num(); ++SegmentIndex)
+        {
+            const FBoundarySegment& Segment = State.BoundaryRegistry.Segments[SegmentIndex];
             if (Segment.Type != EPTPBoundaryType::Convergent)
             {
                 continue;
@@ -190,7 +198,10 @@ void ComputeDistanceToFront(FPlanetState& State)
             if (Segment.OverridingPlateIndex == PlateIndex)
             {
                 const TArray<int32>& SideSamples = (Segment.PlateIndexA == PlateIndex) ? Segment.SamplesA : Segment.SamplesB;
-                Seeds.Append(SideSamples);
+                for (const int32 SampleIndex : SideSamples)
+                {
+                    Seeds.Add(FSeed{SampleIndex, SegmentIndex});
+                }
                 continue;
             }
 
@@ -198,11 +209,17 @@ void ComputeDistanceToFront(FPlanetState& State)
             {
                 if (Segment.PlateIndexA == PlateIndex)
                 {
-                    Seeds.Append(Segment.SamplesA);
+                    for (const int32 SampleIndex : Segment.SamplesA)
+                    {
+                        Seeds.Add(FSeed{SampleIndex, SegmentIndex});
+                    }
                 }
                 else if (Segment.PlateIndexB == PlateIndex)
                 {
-                    Seeds.Append(Segment.SamplesB);
+                    for (const int32 SampleIndex : Segment.SamplesB)
+                    {
+                        Seeds.Add(FSeed{SampleIndex, SegmentIndex});
+                    }
                 }
             }
         }
@@ -212,11 +229,21 @@ void ComputeDistanceToFront(FPlanetState& State)
             return;
         }
 
-        Seeds.Sort();
+        Seeds.Sort([](const FSeed& A, const FSeed& B)
+        {
+            if (A.SampleIndex == B.SampleIndex)
+            {
+                return A.SegmentIndex < B.SegmentIndex;
+            }
+            return A.SampleIndex < B.SampleIndex;
+        });
+
         int32 WriteIndex = 0;
         for (int32 ReadIndex = 0; ReadIndex < Seeds.Num(); ++ReadIndex)
         {
-            if (WriteIndex == 0 || Seeds[ReadIndex] != Seeds[WriteIndex - 1])
+            if (WriteIndex == 0
+                || Seeds[ReadIndex].SampleIndex != Seeds[WriteIndex - 1].SampleIndex
+                || Seeds[ReadIndex].SegmentIndex != Seeds[WriteIndex - 1].SegmentIndex)
             {
                 Seeds[WriteIndex++] = Seeds[ReadIndex];
             }
@@ -224,15 +251,16 @@ void ComputeDistanceToFront(FPlanetState& State)
         Seeds.SetNum(WriteIndex);
 
         std::priority_queue<FQueueNode, std::vector<FQueueNode>, FQueueNodeCompare> Queue;
-        for (const int32 Seed : Seeds)
+        for (const FSeed& Seed : Seeds)
         {
-            if (!State.Samples.IsValidIndex(Seed) || State.Samples[Seed].PlateIndex != PlateIndex)
+            if (!State.Samples.IsValidIndex(Seed.SampleIndex) || State.Samples[Seed.SampleIndex].PlateIndex != PlateIndex)
             {
                 continue;
             }
 
-            State.Samples[Seed].DistToFront = 0.0f;
-            Queue.push(FQueueNode{0.0f, Seed});
+            State.Samples[Seed.SampleIndex].DistToFront = 0.0f;
+            State.SampleBoundaryInfo[Seed.SampleIndex].NearestConvergentSegmentIndex = Seed.SegmentIndex;
+            Queue.push(FQueueNode{0.0f, Seed.SampleIndex, Seed.SegmentIndex});
         }
 
         while (!Queue.empty())
@@ -270,7 +298,8 @@ void ComputeDistanceToFront(FPlanetState& State)
                 if (NewDistance + KINDA_SMALL_NUMBER < State.Samples[NeighborIndex].DistToFront)
                 {
                     State.Samples[NeighborIndex].DistToFront = NewDistance;
-                    Queue.push(FQueueNode{NewDistance, NeighborIndex});
+                    State.SampleBoundaryInfo[NeighborIndex].NearestConvergentSegmentIndex = Current.SegmentIndex;
+                    Queue.push(FQueueNode{NewDistance, NeighborIndex, Current.SegmentIndex});
                 }
             }
         }
