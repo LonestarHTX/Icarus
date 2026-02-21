@@ -11,6 +11,8 @@ Saved/
 *.suo
 *.opensdf
 *.sdf
+*.user
+*.userprefs
 
 # Plugin generated artifacts
 Plugins/**/Binaries/
