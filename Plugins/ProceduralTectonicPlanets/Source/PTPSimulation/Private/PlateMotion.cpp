@@ -8,7 +8,8 @@
 
 namespace
 {
-constexpr double MmPerYearToKmPerMy = 1.0e-6;
+// 1 mm/yr = 1 km/My (1e-6 km/mm * 1e6 yr/My)
+constexpr double MmPerYearToKmPerMy = 1.0;
 constexpr double AverageEulerPoleSinFactor = 0.7;
 
 FVector RandomUniformUnitVector(FRandomStream& RandomStream)
@@ -63,8 +64,16 @@ void MovePlates(FPlanetState& State, const float DeltaTime)
         return;
     }
 
+    constexpr bool bLogPlateMotionDiagnostics = true;
+    const int32 DiagnosticSampleA = 0;
+    const int32 DiagnosticSampleB = State.Samples.Num() / 2;
+    const FVector BeforeA = State.Samples.IsValidIndex(DiagnosticSampleA) ? State.Samples[DiagnosticSampleA].Position : FVector::ZeroVector;
+    const FVector BeforeB = State.Samples.IsValidIndex(DiagnosticSampleB) ? State.Samples[DiagnosticSampleB].Position : FVector::ZeroVector;
+
     TArray<FQuat4d> PlateRotations;
     PlateRotations.SetNum(State.Plates.Num());
+    double MaxStepAngleRad = 0.0;
+    double MinStepAngleRad = MAX_dbl;
 
     for (int32 PlateIndex = 0; PlateIndex < State.Plates.Num(); ++PlateIndex)
     {
@@ -77,6 +86,8 @@ void MovePlates(FPlanetState& State, const float DeltaTime)
         Plate.RotationAxis = Axis;
 
         const double StepAngle = static_cast<double>(Plate.AngularVelocity) * static_cast<double>(DeltaTime);
+        MaxStepAngleRad = FMath::Max(MaxStepAngleRad, FMath::Abs(StepAngle));
+        MinStepAngleRad = FMath::Min(MinStepAngleRad, FMath::Abs(StepAngle));
         const FQuat4d Rotation(FVector3d(Axis), StepAngle);
         PlateRotations[PlateIndex] = Rotation;
         Plate.StepRotation = FQuat(Rotation);
@@ -107,4 +118,23 @@ void MovePlates(FPlanetState& State, const float DeltaTime)
     });
 
     State.Time += DeltaTime;
+
+    if (bLogPlateMotionDiagnostics)
+    {
+        const FVector AfterA = State.Samples.IsValidIndex(DiagnosticSampleA) ? State.Samples[DiagnosticSampleA].Position : FVector::ZeroVector;
+        const FVector AfterB = State.Samples.IsValidIndex(DiagnosticSampleB) ? State.Samples[DiagnosticSampleB].Position : FVector::ZeroVector;
+
+        const double DotA = FMath::Clamp(static_cast<double>(FVector::DotProduct(BeforeA, AfterA)), -1.0, 1.0);
+        const double DotB = FMath::Clamp(static_cast<double>(FVector::DotProduct(BeforeB, AfterB)), -1.0, 1.0);
+        const double DeltaDegA = FMath::RadiansToDegrees(FMath::Acos(DotA));
+        const double DeltaDegB = FMath::RadiansToDegrees(FMath::Acos(DotB));
+
+        UE_LOG(LogTemp, Log, TEXT("[PTP] MovePlates dt=%.2f My, t=%.2f My, plateStep[min=%.6g max=%.6g] rad, sample[0]=%.6f deg, sample[mid]=%.6f deg"),
+            DeltaTime,
+            State.Time,
+            MinStepAngleRad,
+            MaxStepAngleRad,
+            DeltaDegA,
+            DeltaDegB);
+    }
 }
